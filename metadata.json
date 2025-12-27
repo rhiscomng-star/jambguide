@@ -1,0 +1,8 @@
+{
+  "name": "Copy of JAMB 2026 Registration Guide",
+  "description": "The ultimate mobile-friendly guide for JAMB 2026 registration, featuring step-by-step instructions, CBT center lookup, and AI assistance.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
