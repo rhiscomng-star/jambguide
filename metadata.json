@@ -1,8 +1,5 @@
 {
-  "name": "Copy of JAMB 2026 Registration Guide",
-  "description": "The ultimate mobile-friendly guide for JAMB 2026 registration, featuring step-by-step instructions, CBT center lookup, and AI assistance.",
-  "requestFramePermissions": [
-    "camera",
-    "geolocation"
-  ]
+  "name": "JAMB Guide Pro",
+  "description": "A comprehensive, step-by-step interactive guide for the Nigerian JAMB registration process, featuring an AI assistant for real-time support.",
+  "requestFramePermissions": []
 }
