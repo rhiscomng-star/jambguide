@@ -1,222 +1,327 @@
 
-import React, { useState, useMemo } from 'react';
-import { REGISTRATION_STEPS } from './constants';
-import StepCard from './components/StepCard';
-import ChatWidget from './components/ChatWidget';
-import StepVideo from './components/StepVideo';
+import React, { useState, useEffect } from 'react';
+import { 
+  CheckCircle2, 
+  CreditCard, 
+  UserPlus, 
+  ChevronRight, 
+  Play, 
+  X, 
+  Smartphone,
+  Info,
+  MessageCircle,
+  HelpCircle
+} from 'lucide-react';
+import { StepId } from './types';
+import { ProfileCodeContent, PinVendingContent, RegistrationProcessContent } from './components/StepContent';
+import { getJambAdvice } from './services/geminiService';
 
 const App: React.FC = () => {
-  const [activeStepId, setActiveStepId] = useState(1);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [activeStep, setActiveStep] = useState<StepId>(StepId.PROFILE_CODE);
+  const [showVideo, setShowVideo] = useState<string | null>(null);
+  const [showPwaGuide, setShowPwaGuide] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState<{role: 'user' | 'bot', text: string}[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
 
-  const activeStep = useMemo(() => 
-    REGISTRATION_STEPS.find(s => s.id === activeStepId) || REGISTRATION_STEPS[0],
-    [activeStepId]
-  );
-
-  const toggleStepCompletion = (id: number) => {
-    setCompletedSteps(prev => 
-      prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]
-    );
-  };
-
-  const nextStep = () => {
-    if (activeStepId < REGISTRATION_STEPS.length) {
-      if (!completedSteps.includes(activeStepId)) {
-        toggleStepCompletion(activeStepId);
-      }
-      setActiveStepId(activeStepId + 1);
+  const steps = [
+    {
+      id: StepId.PROFILE_CODE,
+      title: "1. Profile Code Generation",
+      description: "Start your journey by creating your unique profile code.",
+      icon: <UserPlus className="text-green-600" />,
+      content: <ProfileCodeContent />,
+      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ?si=placeholder1"
+    },
+    {
+      id: StepId.PIN_VENDING,
+      title: "2. Pin Vending (Payment)",
+      description: "Purchase your registration e-PIN via approved channels.",
+      icon: <CreditCard className="text-green-600" />,
+      content: <PinVendingContent />,
+      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ?si=placeholder2"
+    },
+    {
+      id: StepId.REGISTRATION,
+      title: "3. JAMB Registration Process",
+      description: "Visit a CBT center to complete your data capture.",
+      icon: <CheckCircle2 className="text-green-600" />,
+      content: <RegistrationProcessContent />,
+      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ?si=placeholder3"
     }
-  };
+  ];
 
-  const progress = Math.round((completedSteps.length / REGISTRATION_STEPS.length) * 100);
+  const handleSendMessage = async () => {
+    if (!chatMessage.trim()) return;
+    const msg = chatMessage;
+    setChatMessage("");
+    setChatHistory(prev => [...prev, { role: 'user', text: msg }]);
+    setIsTyping(true);
+    
+    const response = await getJambAdvice(msg);
+    setIsTyping(false);
+    setChatHistory(prev => [...prev, { role: 'bot', text: response || "I couldn't process that. Try again." }]);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* Header */}
-      <header className="bg-emerald-800 text-white sticky top-0 z-40 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-white text-emerald-800 p-2 rounded-lg font-bold shadow-sm">JAMB</div>
-            <h1 className="text-xl font-bold hidden sm:block">Step-by-Step Registration Guide</h1>
-            <h1 className="text-xl font-bold sm:hidden">Registration Guide</h1>
+    <div className="min-h-screen bg-white">
+      <header className="bg-green-700 text-white py-8 px-4 shadow-lg sticky top-0 z-40">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">JAMB 2026 GUIDE</h1>
+            <p className="text-green-100 mt-1 flex items-center gap-2">
+              <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+              Registration Portal Helper
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-[10px] text-emerald-100 font-bold uppercase tracking-wider">Your Progress</p>
-                <p className="text-sm font-bold">{progress}% Complete</p>
-              </div>
-              <div className="w-32 h-2 bg-emerald-900/50 rounded-full overflow-hidden border border-emerald-700">
-                <div 
-                  className="h-full bg-emerald-400 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(52,211,153,0.6)]"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-          </div>
+          <button 
+            onClick={() => setShowPwaGuide(true)}
+            className="hidden md:flex items-center gap-2 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-full text-sm font-medium transition-colors"
+          >
+            <Smartphone size={18} />
+            Install App
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Sidebar - Step List */}
-          <div className="lg:col-span-4 space-y-4">
-            <div className="mb-6">
-              <h2 className="text-xs font-bold text-emerald-800 uppercase tracking-[0.2em] mb-4">Registration Roadmap</h2>
-              <div className="space-y-3">
-                {REGISTRATION_STEPS.map((step) => (
-                  <StepCard
-                    key={step.id}
-                    step={step}
-                    isActive={activeStepId === step.id}
-                    isCompleted={completedSteps.includes(step.id)}
-                    onClick={() => setActiveStepId(step.id)}
-                  />
-                ))}
-              </div>
-            </div>
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        <div className="flex overflow-x-auto pb-4 gap-2 mb-8 no-scrollbar scroll-smooth">
+          {steps.map((step) => (
+            <button
+              key={step.id}
+              onClick={() => setActiveStep(step.id)}
+              className={`flex-shrink-0 px-6 py-3 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                activeStep === step.id 
+                ? 'bg-green-700 text-white shadow-md transform scale-105' 
+                : 'bg-green-50 text-green-700 hover:bg-green-100'
+              }`}
+            >
+              {activeStep === step.id && <ChevronRight size={16} />}
+              {step.title.split('.')[0]}
+            </button>
+          ))}
+        </div>
 
-            {/* Quick Support Card */}
-            <div className="p-6 bg-emerald-900 rounded-2xl text-white shadow-xl shadow-emerald-900/10">
-              <h3 className="font-bold text-lg mb-2">Need Help?</h3>
-              <p className="text-emerald-100/70 text-sm mb-4">Our AI Assistant can answer specific questions about NIN, profile codes, or payment issues.</p>
-              <div className="flex items-center gap-2 text-emerald-300 font-medium text-sm">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                Ask the Chatbot below
-              </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            {steps.map((step) => (
+              activeStep === step.id && (
+                <div key={step.id} className="animate-fadeIn">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="p-3 bg-green-100 rounded-2xl">
+                      {React.cloneElement(step.icon as React.ReactElement<any>, { size: 32 })}
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-800">{step.title}</h2>
+                      <p className="text-gray-500">{step.description}</p>
+                    </div>
+                  </div>
+
+                  <div 
+                    onClick={() => setShowVideo(step.videoUrl)}
+                    className="group relative h-48 md:h-64 rounded-2xl overflow-hidden cursor-pointer mb-8 shadow-inner bg-gray-900"
+                  >
+                    <img 
+                      src={`https://picsum.photos/seed/${step.id}/800/400`} 
+                      className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" 
+                      alt="Tutorial Thumbnail"
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                      <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                        <Play fill="white" size={32} className="ml-1" />
+                      </div>
+                      <p className="mt-4 font-bold tracking-widest uppercase text-sm">Watch Video Guide</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                    {step.content}
+                  </div>
+                </div>
+              )
+            ))}
           </div>
 
-          {/* Main Content - Step Details */}
-          <div className="lg:col-span-8">
-            <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-emerald-100 overflow-hidden min-h-[600px] flex flex-col">
-              {/* Step Header */}
-              <div className={`p-8 ${activeStep.color.includes('emerald') || activeStep.color.includes('green') ? activeStep.color : 'bg-emerald-600'} text-white`}>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Step {activeStep.id} of {REGISTRATION_STEPS.length}</span>
-                    <h2 className="text-3xl font-bold mt-2">{activeStep.title}</h2>
-                  </div>
-                  <div className="text-6xl hidden md:block opacity-20">
-                    {activeStep.icon}
-                  </div>
+          <div className="space-y-6">
+            <div className="bg-green-50 rounded-2xl p-6 border border-green-100">
+              <h3 className="font-bold text-green-800 flex items-center gap-2 mb-4">
+                <Info size={20} />
+                Quick Requirements
+              </h3>
+              <ul className="space-y-3 text-sm text-green-900">
+                <li className="flex items-start gap-2">
+                  <div className="mt-1"><CheckCircle2 size={14} /></div>
+                  Valid National Identity Number (NIN)
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="mt-1"><CheckCircle2 size={14} /></div>
+                  A personal mobile phone number
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="mt-1"><CheckCircle2 size={14} /></div>
+                  Active email address
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+              <h3 className="font-bold text-gray-800 mb-2">Important Dates</h3>
+              <p className="text-xs text-gray-500 mb-4">Official 2026 tentative schedule</p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between py-2 border-b">
+                  <span className="text-sm font-medium">Registration Starts</span>
+                  <span className="text-sm text-green-700 font-bold">Jan 2026</span>
                 </div>
-              </div>
-
-              {/* Step Body */}
-              <div className="p-8 flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Detailed Description */}
-                  <div className="space-y-6">
-                    <div>
-                      <h4 className="text-sm font-bold text-emerald-800 uppercase mb-3 flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        What to do
-                      </h4>
-                      <div className="space-y-4">
-                        {activeStep.detailedContent.map((item, i) => (
-                          <div key={i} className="flex gap-3">
-                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center text-xs font-bold text-emerald-700 border border-emerald-100">
-                              {i + 1}
-                            </div>
-                            <p className="text-slate-600 leading-relaxed">{item}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Video Section Integration */}
-                    <div className="pt-6 border-t border-slate-100">
-                       <h4 className="text-sm font-bold text-emerald-800 uppercase mb-3 flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                        Video Guide
-                      </h4>
-                      <StepVideo prompt={activeStep.videoPrompt} stepId={activeStep.id} stepTitle={activeStep.title} />
-                    </div>
-
-                    <div className="pt-4 border-t border-slate-100">
-                      <h4 className="text-sm font-bold text-amber-600 uppercase mb-3 flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                        Important Tips
-                      </h4>
-                      <ul className="list-disc list-inside space-y-2 text-slate-600 text-sm italic">
-                        {activeStep.tips.map((tip, i) => (
-                          <li key={i}>{tip}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* Checklist Section */}
-                  <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
-                    <h4 className="text-sm font-bold text-emerald-800 uppercase mb-4 flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      Requirement Checklist
-                    </h4>
-                    <div className="space-y-3">
-                      {activeStep.checklist.map((item, i) => (
-                        <label key={i} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-emerald-400 transition-colors group">
-                          <input 
-                            type="checkbox" 
-                            className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                          />
-                          <span className="text-slate-700 text-sm font-medium group-hover:text-emerald-700">{item}</span>
-                        </label>
-                      ))}
-                    </div>
-
-                    <div className="mt-8 pt-6 border-t border-emerald-100 flex flex-col items-center">
-                      <button 
-                        onClick={() => toggleStepCompletion(activeStepId)}
-                        className={`w-full py-3 rounded-xl font-bold transition-all duration-300 shadow-sm ${
-                          completedSteps.includes(activeStepId)
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-white text-emerald-800 border-2 border-emerald-200 hover:border-emerald-500'
-                        }`}
-                      >
-                        {completedSteps.includes(activeStepId) ? '✓ Step Completed' : 'Mark as Complete'}
-                      </button>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between py-2 border-b">
+                  <span className="text-sm font-medium">Registration Ends</span>
+                  <span className="text-sm text-red-600 font-bold">Feb 2026</span>
                 </div>
-              </div>
-
-              {/* Navigation Footer */}
-              <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-                <button
-                  disabled={activeStepId === 1}
-                  onClick={() => setActiveStepId(prev => prev - 1)}
-                  className="px-6 py-2 text-emerald-800 font-bold hover:text-emerald-600 disabled:opacity-30 flex items-center gap-2 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
-                  Previous
-                </button>
-                <button
-                  onClick={nextStep}
-                  className="bg-emerald-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-800 hover:scale-105 transition-all flex items-center gap-2"
-                >
-                  {activeStepId === REGISTRATION_STEPS.length ? 'Finalize' : 'Next Step'}
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                </button>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm font-medium">Main Exam</span>
+                  <span className="text-sm text-gray-800 font-bold">April 2026</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </main>
 
-      {/* AI Assistant Widget */}
-      <ChatWidget currentStep={activeStepId} />
-
-      {/* Global Footer */}
-      <footer className="bg-emerald-900 py-12 text-center text-emerald-100 text-sm">
-        <div className="max-w-4xl mx-auto px-4">
-          <p className="font-bold mb-4">Official JAMB Information</p>
-          <p className="opacity-70">© 2024 JAMB Registration Helper. This is an informational guide and not an official JAMB portal.</p>
-          <p className="mt-2 opacity-70">Always verify information on the official <a href="https://jamb.gov.ng" target="_blank" rel="noopener noreferrer" className="text-emerald-300 font-bold hover:underline">jamb.gov.ng</a> website.</p>
+      {showVideo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+          <div className="relative w-full max-w-4xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
+            <button 
+              onClick={() => setShowVideo(null)}
+              className="absolute top-4 right-4 z-10 p-2 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+            <iframe 
+              className="w-full h-full"
+              src={showVideo}
+              title="YouTube video player" 
+              frameBorder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+              allowFullScreen
+            ></iframe>
+          </div>
         </div>
-      </footer>
+      )}
+
+      {showPwaGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl relative">
+            <button onClick={() => setShowPwaGuide(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600">
+              <X size={24} />
+            </button>
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 text-green-600 rounded-3xl mb-6">
+                <Smartphone size={40} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Get the App</h2>
+              <p className="text-gray-600 mb-8">Install this guide directly from your browser to access it anytime!</p>
+              
+              <div className="space-y-4 text-left">
+                <div className="p-4 bg-gray-50 rounded-2xl flex gap-4">
+                  <div className="bg-white p-2 rounded-xl shadow-sm text-green-600 font-bold">1</div>
+                  <p className="text-sm text-gray-700">Open this site in Chrome (Android) or Safari (iOS).</p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-2xl flex gap-4">
+                  <div className="bg-white p-2 rounded-xl shadow-sm text-green-600 font-bold">2</div>
+                  <p className="text-sm text-gray-700">Tap the <span className="font-bold underline">Menu</span> or <span className="font-bold underline">Share</span> button.</p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-2xl flex gap-4">
+                  <div className="bg-white p-2 rounded-xl shadow-sm text-green-600 font-bold">3</div>
+                  <p className="text-sm text-gray-700">Select <span className="font-bold underline">"Add to Home Screen"</span>.</p>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowPwaGuide(false)}
+                className="mt-8 w-full bg-green-700 text-white py-4 rounded-2xl font-bold hover:bg-green-800 transition-colors shadow-lg shadow-green-200"
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="fixed bottom-6 right-6 z-40">
+        {!chatOpen ? (
+          <button 
+            onClick={() => setChatOpen(true)}
+            className="w-14 h-14 bg-green-600 text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-transform"
+          >
+            <MessageCircle size={28} />
+          </button>
+        ) : (
+          <div className="bg-white w-80 md:w-96 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[500px] animate-slideUp">
+            <div className="bg-green-700 p-4 text-white flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <HelpCircle size={20} />
+                <span className="font-bold">JAMB Assistant</span>
+              </div>
+              <button onClick={() => setChatOpen(false)}><X size={20} /></button>
+            </div>
+            
+            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-50 min-h-[300px]">
+              {chatHistory.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500">Ask me anything about JAMB 2026!</p>
+                </div>
+              )}
+              {chatHistory.map((chat, idx) => (
+                <div key={idx} className={`flex ${chat.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${
+                    chat.role === 'user' 
+                    ? 'bg-green-600 text-white rounded-tr-none' 
+                    : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none'
+                  }`}>
+                    {chat.text}
+                  </div>
+                </div>
+              ))}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-white p-3 rounded-2xl text-xs text-gray-400 italic">Thinking...</div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 bg-white border-t flex gap-2">
+              <input 
+                type="text" 
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="Type your question..."
+                className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <button 
+                onClick={handleSendMessage}
+                className="bg-green-600 text-white p-2 rounded-full hover:bg-green-700"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(50px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
+        .animate-slideUp { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+      `}</style>
     </div>
   );
 };
