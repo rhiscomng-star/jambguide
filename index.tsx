@@ -529,7 +529,7 @@ const App: React.FC = () => {
               {/* Tutorial Media Placeholder */}
               <div className="relative aspect-video rounded-3xl overflow-hidden bg-gray-900 mb-8 shadow-inner group cursor-pointer">
                 <img
-                  src={`https://picsum.photos/seed/jamb-${activeStep.id}/1280/720`}
+                  src={`https://blocks.astratic.com/img/general-img-landscape.png`}
                   className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
                   alt="Step Tutorial"
                 />
